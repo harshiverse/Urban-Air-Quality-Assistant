@@ -139,3 +139,12 @@ export {
   TooltipProvider,
 } from './tooltip';
 export type { TooltipContentProps, TooltipProps, TooltipProviderProps } from './tooltip';
+
+// CursorGrid (React Bits interactive WebGL canvas grid)
+export { CursorGrid } from './cursor-grid';
+export type { CursorGridProps } from './cursor-grid';
+
+// GhostType (AI-style ghost completions headline typewriter)
+export { GhostType } from './ghost-type';
+export type { GhostTypeProps } from './ghost-type';
+

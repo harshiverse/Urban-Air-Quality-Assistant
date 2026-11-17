@@ -7,14 +7,17 @@ import {
   Cpu,
   MapPin,
   ArrowRight,
-  Sparkles,
   Users,
   CheckCircle2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ThemeToggle, ThemeSegmentedToggle } from '@/components/layout/theme-toggle';
+import { ThemeToggle } from '@/components/layout/theme-toggle';
+import { Footer } from '@/components/layout/footer';
+import { RotatingCardsCarousel } from '@/components/home/rotating-cards-carousel';
+import { CursorGrid } from '@/components/ui/cursor-grid';
+import { GhostType } from '@/components/ui/ghost-type';
 import { AQI_CATEGORIES } from '@/lib/constants';
 
 export const metadata: Metadata = {
@@ -90,42 +93,64 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* Hero Section */}
+      {/* Hero Section with Interactive CursorGrid Canvas */}
       <main className="flex-1">
-        <section className="relative overflow-hidden py-16 sm:py-24 px-6 lg:px-12 border-b border-border bg-gradient-to-b from-primary/5 via-background to-background">
-          <div className="mx-auto max-w-5xl text-center space-y-6">
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1 text-xs font-semibold text-primary shadow-sm">
-              <Sparkles className="h-3.5 w-3.5" />
-              <span>Official CPCB National Air Quality Index Standard</span>
+        <section className="relative overflow-hidden border-b border-border bg-gradient-to-b from-primary/5 via-background to-background">
+          <CursorGrid
+            cellSize={54}
+            radius={150}
+            holdTime={400}
+            fadeDuration={800}
+            gridStyle="lines"
+            clickPulse={true}
+            className="py-16 sm:py-24 px-6 lg:px-12"
+          >
+            <div className="mx-auto max-w-5xl text-center space-y-6">
+              <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight max-w-4xl mx-auto leading-tight min-h-[5.5rem] sm:min-h-[7.5rem] flex items-center justify-center">
+                <GhostType
+                  text="Understand the Air You Breathe."
+                  completions={[
+                    ' Make Informed Decisions.',
+                    " Protect Your Family's Health.",
+                    ' Track Real-Time Pollution.',
+                    ' Stay Ahead of Smog Waves.',
+                    ' Act on Official CPCB Data.',
+                  ]}
+                  streamSpeed={40}
+                  thinkDelay={500}
+                  acceptDelay={800}
+                  holdDelay={2800}
+                  deleteSpeed={20}
+                  ghostOpacity={0.4}
+                  caret={true}
+                  hint={false}
+                  prefixClassName="text-foreground"
+                  completionClassName="text-primary bg-gradient-to-r from-primary via-blue-500 to-primary/70 bg-clip-text text-transparent"
+                  ghostClassName="text-primary/45 italic"
+                />
+              </h1>
+
+              <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+                Transforming complex environmental measurements into accessible, evidence-based intelligence
+                for citizens, outdoor workers, and healthcare-sensitive individuals across India.
+              </p>
+
+              <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
+                <Button asChild size="lg" className="gap-2 shadow-md text-base px-6">
+                  <Link href="/dashboard">
+                    <Activity className="h-5 w-5" />
+                    <span>Explore Live Dashboard</span>
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" size="lg" className="text-base px-6">
+                  <Link href="/methodology">
+                    <span>How AQI is Calculated</span>
+                  </Link>
+                </Button>
+              </div>
             </div>
-
-            <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-foreground max-w-4xl mx-auto leading-tight">
-              Understand the Air You Breathe.{' '}
-              <span className="text-primary bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-                Make Informed Decisions.
-              </span>
-            </h1>
-
-            <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-              Transforming complex environmental measurements into accessible, evidence-based intelligence
-              for citizens, outdoor workers, and healthcare-sensitive individuals across India.
-            </p>
-
-            <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
-              <Button asChild size="lg" className="gap-2 shadow-md text-base px-6">
-                <Link href="/dashboard">
-                  <Activity className="h-5 w-5" />
-                  <span>Explore Live Dashboard</span>
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-              <Button asChild variant="outline" size="lg" className="text-base px-6">
-                <Link href="/methodology">
-                  <span>How AQI is Calculated</span>
-                </Link>
-              </Button>
-            </div>
-          </div>
+          </CursorGrid>
         </section>
 
         {/* Featured Metros Live Preview Grid */}
@@ -198,6 +223,9 @@ export default function HomePage() {
             })}
           </div>
         </section>
+
+        {/* 3D Rotating Cards Carousel */}
+        <RotatingCardsCarousel />
 
         {/* Core Capabilities Section */}
         <section className="py-16 px-6 lg:px-12 bg-muted/30 border-y border-border">
@@ -331,26 +359,8 @@ export default function HomePage() {
         </section>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-border bg-card px-6 lg:px-12 py-6 text-xs text-muted-foreground">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <Wind className="h-4 w-4 text-primary" />
-            <span>Urban Air Quality Assistant • Built for India</span>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <Link href="/dashboard" className="hover:text-foreground transition-colors">
-              Dashboard
-            </Link>
-            <Link href="/methodology" className="hover:text-foreground transition-colors">
-              Methodology
-            </Link>
-            <div className="h-3 w-px bg-border" />
-            <ThemeSegmentedToggle />
-          </div>
-        </div>
-      </footer>
+      {/* Expanded Modern Footer with Watermark */}
+      <Footer />
     </div>
   );
 }
