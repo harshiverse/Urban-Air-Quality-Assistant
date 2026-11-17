@@ -1,0 +1,128 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Pollutant types enum
+enum PollutantType {
+  PM2_5
+  PM10
+  NO2
+  SO2
+  CO
+  O3
+  NH3
+  PB
+}
+
+// Data quality flags
+enum DataQualityFlag {
+  VALID
+  SUSPECT
+  INVALID
+  MISSING
+  UNCHECKED
+}
+
+// AQI categories (CPCB)
+enum AqiCategory {
+  GOOD                 // 0-50
+  SATISFACTORY        // 51-100
+  MODERATELY_POLLUTED // 101-200
+  POOR                // 201-300
+  VERY_POOR           // 301-400
+  SEVERE              // 401-500
+}
+
+// Data freshness indicators
+enum DataFreshness {
+  LIVE         // < 1 hour old
+  RECENT       // 1-3 hours old
+  STALE        // 3-6 hours old
+  OUTDATED     // > 6 hours old
+  UNKNOWN
+}
+
+// Monitoring Station
+model MonitoringStation {
+  id           String   @id @default(cuid())
+  stationCode  String   @unique  // Provider-specific station identifier
+  name         String                // e.g., "Delhi - Anand Vihar"
+  city         String                // e.g., "Delhi"
+  state        String                // e.g., "Delhi"
+  latitude     Float?               // Decimal degrees
+  longitude    Float?               // Decimal degrees
+  provider     String                // e.g., "CPCB", "OpenAQ"
+  isActive     Boolean  @default(true)
+  metadata     Json?                // Additional provider-specific metadata
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  // Relations
+  observations        PollutantObservation[]
+  airQualitySnapshots AirQualitySnapshot[]
+  
+  @@index([city, state])
+  @@index([provider, stationCode])
+  @@index([isActive])
+  @@map("monitoring_stations")
+}
+
+// Pollutant Observation
+model PollutantObservation {
+  id               String          @id @default(cuid())
+  stationId        String
+  pollutantType    PollutantType
+  concentration    Float            // Numeric value
+  unit             String           // e.g., "µg/m³", "mg/m³"
+  averagingPeriod  String           // e.g., "24h", "8h", "1h"
+  observedAt       DateTime         // When measurement was taken
+  dataQualityFlag  DataQualityFlag  @default(UNCHECKED)
+  sourceProvider   String           // e.g., "CPCB", "OpenAQ"
+  ingestedAt       DateTime         @default(now())  // When we stored it
+  metadata         Json?            // Additional context
+  
+  // Relations
+  station          MonitoringStation @relation(fields: [stationId], references: [id], onDelete: Cascade)
+  
+  @@index([stationId, observedAt(sort: Desc)])
+  @@index([pollutantType, observedAt(sort: Desc)])
+  @@index([observedAt(sort: Desc)])
+  @@index([dataQualityFlag])
+  @@unique([stationId, pollutantType, observedAt, averagingPeriod])
+  @@map("pollutant_observations")
+}
+
+// Air Quality Snapshot (pre-calculated or cached)
+model AirQualitySnapshot {
+  id                    String         @id @default(cuid())
+  stationId             String?        // Nullable if city-level aggregate
+  city                  String
+  state                 String?
+  aqi                   Int            // Overall AQI value
+  aqiCategory           AqiCategory
+  dominantPollutant     PollutantType
+  subIndices            Json           // { "PM2_5": 142, "PM10": 98, ... }
+  measurements          Json           // Raw concentrations
+  measurementTimestamp  DateTime       // When underlying data was measured
+  calculatedAt          DateTime       @default(now())
+  dataFreshness         DataFreshness  @default(UNKNOWN)
+  sourceAttribution     String         // "CPCB via station XYZ"
+  metadata              Json?
+  
+  // Relations
+  station               MonitoringStation? @relation(fields: [stationId], references: [id], onDelete: Cascade)
+  
+  @@index([city, measurementTimestamp(sort: Desc)])
+  @@index([stationId, measurementTimestamp(sort: Desc)])
+  @@index([measurementTimestamp(sort: Desc)])
+  @@index([aqiCategory])
+  @@map("air_quality_snapshots")
+}
