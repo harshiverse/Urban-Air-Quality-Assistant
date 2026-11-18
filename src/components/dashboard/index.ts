@@ -12,3 +12,4 @@ export { AqiComparisonCard } from './aqi-comparison-card';
 export { QuickActions } from './quick-actions';
 export { DataQualityPanel } from './data-quality-panel';
 export { DashboardHeader } from './dashboard-header';
+export { WeatherContextCard } from './weather-context-card';

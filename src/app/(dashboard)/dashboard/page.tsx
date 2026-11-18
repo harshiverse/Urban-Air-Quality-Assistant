@@ -23,7 +23,9 @@ import { MeasurementStatusIndicator } from '@/components/air-quality/measurement
 import { EmptyState } from '@/components/ui/empty-state';
 import { CityTabs } from '@/components/dashboard/city-tabs';
 import { DashboardViewControls } from '@/components/dashboard/dashboard-view-controls';
+import { WeatherContextCard } from '@/components/dashboard/weather-context-card';
 import { airQualityService } from '@/server/services/air-quality.service';
+import { weatherService } from '@/server/services/weather.service';
 import { formatConcentration, getAqiCategoryTextClass } from '@/lib/formatters';
 
 export const metadata: Metadata = {
@@ -49,11 +51,13 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
   const selectedCity = resolvedParams.city || 'Delhi';
   const selectedStation = resolvedParams.station;
 
-  // Retrieve validated air quality snapshot from domain service
+  // Retrieve validated air quality snapshot and meteorological context from domain services
   const snapshot = await airQualityService.getCurrentAirQuality({
     city: selectedCity,
     stationCode: selectedStation,
   });
+
+  const weather = await weatherService.getWeatherForCity(selectedCity);
 
   const pm25 = snapshot?.pollutants.find((p) => p.pollutant === 'PM2_5');
   const pm10 = snapshot?.pollutants.find((p) => p.pollutant === 'PM10');
@@ -223,6 +227,9 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
                 </p>
               </CardContent>
             </Card>
+
+            {/* Weather & Atmospheric Context */}
+            <WeatherContextCard weather={weather} city={selectedCity} />
           </div>
 
           {/* Interactive View Controls (WHO Toggle, Audience Advice Tabs, Pollutant Grid) */}
