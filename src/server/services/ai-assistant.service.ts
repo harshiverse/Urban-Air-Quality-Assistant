@@ -38,13 +38,39 @@ export class AiAssistantService {
       range: '24h',
     });
 
-    // 5. Construct verified grounding context
-    const groundingContext = this.buildGroundingContext(city, snapshot, weather, history?.summary ?? null);
+    // 5. Detect comparison city in user query and retrieve its snapshot
+    let comparisonCitySnapshot: AiGroundingContext['comparisonCitySnapshot'] = null;
+    const detectedCity = this.detectComparisonCity(sanitizedMessage, city);
+    if (detectedCity) {
+      try {
+        const compSnapshot = await airQualityService.getCurrentAirQuality({ city: detectedCity });
+        if (compSnapshot) {
+          comparisonCitySnapshot = {
+            city: compSnapshot.city,
+            stationName: compSnapshot.station.name,
+            aqi: compSnapshot.aqi,
+            categoryLabel: compSnapshot.categoryLabel,
+            dominantPollutant: compSnapshot.dominantPollutantName || compSnapshot.dominantPollutant || null,
+          };
+        }
+      } catch {
+        // Fallback silently if comparison city is unavailable
+      }
+    }
 
-    // 6. Build strict grounding system prompt
+    // 6. Construct verified grounding context
+    const groundingContext = this.buildGroundingContext(
+      city,
+      snapshot,
+      weather,
+      history?.summary ?? null,
+      comparisonCitySnapshot
+    );
+
+    // 7. Build strict grounding system prompt
     const systemPrompt = this.constructSystemPrompt(groundingContext);
 
-    // 7. Invoke configured AI provider with fallback resilience
+    // 8. Invoke configured AI provider with fallback resilience
     const provider = getAiProvider();
     const generationResult = await provider.generateResponse({
       systemPrompt,
@@ -75,7 +101,8 @@ export class AiAssistantService {
       ? H extends { summary: infer S }
         ? S
         : null
-      : null
+      : null,
+    comparisonCitySnapshot?: AiGroundingContext['comparisonCitySnapshot']
   ): AiGroundingContext {
     const pollutants: GroundedPollutantItem[] =
       snapshot?.pollutants.map((p) => ({
@@ -112,6 +139,7 @@ export class AiAssistantService {
       isStale,
       weather: weather ?? null,
       historicalSummary: historicalSummary ?? null,
+      comparisonCitySnapshot: comparisonCitySnapshot ?? null,
       sourceAttribution: snapshot?.sourceAttribution || 'Central Pollution Control Board (CPCB) / CAAQMS Network',
     };
   }
@@ -123,6 +151,10 @@ export class AiAssistantService {
     const weatherSummary = context.weather
       ? `Temperature: ${context.weather.temperature}°C, Humidity: ${context.weather.humidity}%, Wind: ${context.weather.windSpeed} km/h (${context.weather.windDirection}), Inversion Risk: ${context.weather.inversionRisk}, Dispersion Potential: ${context.weather.dispersionPotential}`
       : 'Weather data unavailable';
+
+    const comparisonSummary = context.comparisonCitySnapshot
+      ? `\n- **Comparison City**: ${context.comparisonCitySnapshot.city} (${context.comparisonCitySnapshot.stationName}): AQI ${formatAqiValue(context.comparisonCitySnapshot.aqi)} [${context.comparisonCitySnapshot.categoryLabel}], Dominant: ${context.comparisonCitySnapshot.dominantPollutant || 'N/A'}`
+      : '';
 
     const pollutantsSummary = context.pollutants
       .map(
@@ -141,7 +173,7 @@ export class AiAssistantService {
 - **Measurement Status**: ${context.measurementStatus} (Data Age: ${context.dataAgeHours} hours)
 - **Data Sufficiency**: ${context.dataSufficiencyMessage}
 - **Meteorology**: ${weatherSummary}
-- **24-Hour Range**: ${context.historicalSummary ? `Min ${context.historicalSummary.minAqi}, Max ${context.historicalSummary.maxAqi}, Avg ${context.historicalSummary.avgAqi}` : 'N/A'}
+- **24-Hour Range**: ${context.historicalSummary ? `Min ${context.historicalSummary.minAqi}, Max ${context.historicalSummary.maxAqi}, Avg ${context.historicalSummary.avgAqi}` : 'N/A'}${comparisonSummary}
 - **Station Pollutant Measurements**:
 ${pollutantsSummary}
 
@@ -150,7 +182,42 @@ ${pollutantsSummary}
 2. **CPCB METHODOLOGY**: All AQI calculations adhere to the Central Pollution Control Board (CPCB) National Air Quality Index (NAQI) guidelines.
 3. **NO MEDICAL DIAGNOSIS**: Do NOT provide medical prescriptions or clinical diagnoses. Provide general, practical, evidence-based precautions (e.g. N95 respirators, HEPA air cleaners, timing outdoor activities) and advise consulting a physician for individual health conditions.
 4. **NO UNSUPPORTED CAUSALITY**: Atmospheric conditions (like temperature inversions and calm winds) correlate with trapped pollution, but do not assert unverified industrial incidents or fires without empirical data.
-5. **TONE & FORMAT**: Be calm, clear, scientific, and encouraging. Structure your reply in clean markdown. Provide 3 suggested follow-up questions at the very end in a section titled "### Suggested questions:".`;
+5. **COMPARISONS**: When comparing cities, use the exact AQI and category values provided above. Clearly state which city currently has lower particulate exposure and note differing geographic or meteorological contexts.
+6. **TONE & FORMAT**: Be calm, clear, scientific, and encouraging. Structure your reply in clean markdown. Provide 3 suggested follow-up questions at the very end in a section titled "### Suggested questions:".`;
+  }
+
+  /**
+   * Detects whether the query mentions a secondary Indian city for comparison
+   */
+  private detectComparisonCity(message: string, currentCity: string): string | null {
+    const supportedCities = [
+      'delhi',
+      'mumbai',
+      'bengaluru',
+      'bangalore',
+      'kolkata',
+      'chennai',
+      'hyderabad',
+      'lucknow',
+      'pune',
+      'ahmedabad',
+      'jaipur',
+    ];
+
+    const currentCityLower = currentCity.toLowerCase();
+    for (const city of supportedCities) {
+      if (city === currentCityLower || (city === 'bangalore' && currentCityLower === 'bengaluru')) {
+        continue;
+      }
+      // Check whole-word boundary
+      const regex = new RegExp(`\\b${city}\\b`, 'i');
+      if (regex.test(message)) {
+        if (city === 'bangalore') return 'Bengaluru';
+        return city.charAt(0).toUpperCase() + city.slice(1);
+      }
+    }
+
+    return null;
   }
 
   /**

@@ -24,13 +24,14 @@ const SUPPORTED_CITIES = [
 ] as const;
 
 interface AssistantPageProps {
-  searchParams?: Promise<{ city?: string; station?: string }>;
+  searchParams?: Promise<{ city?: string; station?: string; query?: string }>;
 }
 
 export default async function AssistantPage({ searchParams }: AssistantPageProps) {
   const resolvedParams = searchParams ? await searchParams : {};
   const selectedCity = resolvedParams.city || 'Delhi';
   const selectedStation = resolvedParams.station;
+  const initialQuery = resolvedParams.query;
 
   // Retrieve initial verified environmental context on the server
   const snapshot = await airQualityService.getCurrentAirQuality({
@@ -97,6 +98,7 @@ export default async function AssistantPage({ searchParams }: AssistantPageProps
         initialLocation={selectedCity}
         initialContext={initialContext}
         supportedCities={SUPPORTED_CITIES}
+        initialQuery={initialQuery}
       />
     </div>
   );

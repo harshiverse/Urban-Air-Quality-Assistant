@@ -154,7 +154,115 @@ export class RuleBasedAiProvider implements IAiProvider {
         `How does the weather relate to this pollution?`,
       ];
     }
-    // 6. Current air quality / status query
+    // 6. Comparative query (Delhi vs Mumbai, Bengaluru, etc.)
+    else if (
+      context.comparisonCitySnapshot ||
+      lower.includes('compare') ||
+      lower.includes(' vs ') ||
+      lower.includes(' versus ') ||
+      lower.includes('better than') ||
+      lower.includes('worse than')
+    ) {
+      if (context.comparisonCitySnapshot) {
+        const comp = context.comparisonCitySnapshot;
+        const compAqiStr = formatAqiValue(comp.aqi);
+        const aqiDiff = (context.aqi ?? 0) - (comp.aqi ?? 0);
+        const cleanerCity = aqiDiff > 0 ? comp.city : aqiDiff < 0 ? city : 'both cities';
+        const cleanerNote =
+          aqiDiff === 0
+            ? `Both ${city} and ${comp.city} currently have identical AQI levels.`
+            : `**${cleanerCity}** currently has lower particulate exposure (AQI difference: ${Math.abs(aqiDiff)} points).`;
+
+        reply =
+          `### Air Quality Comparison: ${city} vs ${comp.city}\n\n` +
+          `Comparative analysis grounded in official CPCB monitoring snapshots:\n\n` +
+          `| Environmental Metric | ${city} | ${comp.city} |\n` +
+          `| :--- | :--- | :--- |\n` +
+          `| **Current AQI** | **${aqiStr}** (${category}) | **${compAqiStr}** (${comp.categoryLabel}) |\n` +
+          `| **Monitoring Station** | ${station} | ${comp.stationName} |\n` +
+          `| **Dominant Pollutant** | ${dominant} | ${comp.dominantPollutant || 'N/A'} |\n\n` +
+          `**Assessment**: ${cleanerNote}\n\n` +
+          `- **Regional Factors**: Coastal cities (like Mumbai or Chennai) frequently benefit from diurnal marine breeze ventilation and wet aerosol scavenging, whereas landlocked northern plains (like Delhi or Lucknow) experience winter thermal inversions and boundary-layer stagnation.\n` +
+          `- **Standard Guidance**: Individuals sensitive to particulate matter should check the primary pollutant driver in their specific locality before prolonged outdoor exertion.`;
+
+        suggestions = [
+          `Why does ${city} have different pollution than ${comp.city}?`,
+          `What are the historical trends for ${city}?`,
+          `Is it safe to exercise outdoors in ${city} today?`,
+        ];
+      } else {
+        reply =
+          `### Urban Air Quality Comparison\n\n` +
+          `Current official CPCB measurement for **${city}** is **${aqiStr}** (${category}), with **${dominant}** as the primary driver.\n\n` +
+          `To compare **${city}** with another Indian metro, mention the city name (e.g., *"How does ${city} compare to Mumbai?"* or *"Compare ${city} with Bengaluru"*). Supported comparison hubs include Delhi, Mumbai, Bengaluru, Kolkata, Chennai, Hyderabad, Lucknow, and Pune.`;
+
+        suggestions = [
+          `Compare ${city} with Mumbai`,
+          `Compare ${city} with Bengaluru`,
+          `What is the 24-hour trend in ${city}?`,
+        ];
+      }
+    }
+    // 7. Trend analysis (improving vs worsening vs stable)
+    else if (
+      lower.includes('improv') ||
+      lower.includes('worsen') ||
+      lower.includes('trend') ||
+      lower.includes('getting better') ||
+      lower.includes('getting worse') ||
+      lower.includes('increasing') ||
+      lower.includes('decreasing')
+    ) {
+      const history = context.historicalSummary;
+      if (history && history.avgAqi !== null && context.aqi !== null) {
+        const delta = context.aqi - history.avgAqi;
+        let trendAnalysis = '';
+
+        if (delta <= -15) {
+          trendAnalysis = `Current air quality (**${aqiStr}**) represents an **improving trend** compared to the 24-hour average of **${history.avgAqi}** (${Math.abs(delta)} points below the daily mean).`;
+        } else if (delta >= 15) {
+          trendAnalysis = `Current air quality (**${aqiStr}**) represents a **deteriorating / worsening trend** compared to the 24-hour average of **${history.avgAqi}** (+${delta} points above the daily mean). Peak exposure reached **${history.maxAqi}**.`;
+        } else {
+          trendAnalysis = `Air quality has remained **relatively stable** across the 24-hour window, hovering near the 24-hour mean of **${history.avgAqi}** (current AQI: **${aqiStr}**, 24-hour range: ${history.minAqi} to ${history.maxAqi}).`;
+        }
+
+        reply =
+          `### 24-Hour Air Quality Trend for ${city}\n\n` +
+          `${trendAnalysis}\n\n` +
+          `**24-Hour Statistical Summary**:\n` +
+          `- **Current AQI**: ${aqiStr} (${category})\n` +
+          `- **24-Hour Mean**: ${history.avgAqi}\n` +
+          `- **Lowest Recorded**: ${history.minAqi}\n` +
+          `- **Peak Exposure Spike**: ${history.maxAqi}\n` +
+          `- **Dominant Driver**: ${dominant}\n\n` +
+          `**Meteorological Context**: ${
+            weather
+              ? `Wind speeds of ${weather.windSpeed} km/h (${weather.windDirection}) with ${weather.dispersionPotential.toLowerCase()} dispersion potential. ${
+                  weather.inversionRisk === 'HIGH'
+                    ? 'Nocturnal temperature inversion may restrict evening particulate ventilation.'
+                    : 'Atmospheric mixing is aiding regional particulate dilution.'
+                }`
+              : 'Meteorological observations unavailable.'
+          }`;
+
+        suggestions = [
+          `Why is ${dominant} the primary driver in ${city}?`,
+          `What are safe precautions given this trend?`,
+          `How does ${city} compare to Mumbai today?`,
+        ];
+      } else {
+        reply =
+          `### Air Quality Trend for ${city}\n\n` +
+          `Current official CPCB measurement for **${city}** is **${aqiStr}** (${category}). Continuous 24-hour baseline data is currently compiling. Recheck shortly for diurnal trend comparisons.`;
+
+        suggestions = [
+          `What precautions should I take in ${city}?`,
+          `Is it safe for outdoor exercise today?`,
+          `What is the weather correlation in ${city}?`,
+        ];
+      }
+    }
+    // 8. Current air quality / status query
     else {
       reply = `### Current Air Quality in ${city}\n\n` +
         `The current official CPCB Air Quality Index (AQI) for **${city}** (measured at **${station}**) is **${aqiStr}**, placing it in the **${category}** category.\n\n` +

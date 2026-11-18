@@ -39,6 +39,7 @@ export interface AssistantChatProps {
   initialLocation: string;
   initialContext: AiGroundingContext;
   supportedCities: readonly string[];
+  initialQuery?: string;
 }
 
 interface MessageItem extends ChatMessage {
@@ -62,6 +63,7 @@ export function AssistantChat({
   initialLocation,
   initialContext,
   supportedCities,
+  initialQuery,
 }: AssistantChatProps) {
   const [currentCity, setCurrentCity] = React.useState(initialLocation);
   const [activeContext, setActiveContext] = React.useState<AiGroundingContext>(initialContext);
@@ -78,11 +80,13 @@ export function AssistantChat({
       ],
     },
   ]);
-  const [inputMessage, setInputMessage] = React.useState('');
+  const [inputMessage, setInputMessage] = React.useState(initialQuery || '');
   const [isLoading, setIsLoading] = React.useState(false);
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
   const [inspectingContext, setInspectingContext] = React.useState<AiGroundingContext | null>(null);
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
+
+  const initialQuerySubmittedRef = React.useRef(false);
 
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
 
@@ -181,6 +185,14 @@ export function AssistantChat({
       setIsLoading(false);
     }
   };
+
+  React.useEffect(() => {
+    if (initialQuery && !initialQuerySubmittedRef.current) {
+      initialQuerySubmittedRef.current = true;
+      handleSendMessage(initialQuery);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialQuery]);
 
   const handleCopy = (content: string, id: string) => {
     navigator.clipboard.writeText(content);

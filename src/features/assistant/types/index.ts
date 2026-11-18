@@ -35,6 +35,13 @@ export interface AiGroundingContext {
   isStale: boolean;
   weather: WeatherObservationDto | null;
   historicalSummary: HistoricalSummary | null;
+  comparisonCitySnapshot?: {
+    city: string;
+    stationName: string;
+    aqi: number | null;
+    categoryLabel: string;
+    dominantPollutant: string | null;
+  } | null;
   sourceAttribution: string;
 }
 

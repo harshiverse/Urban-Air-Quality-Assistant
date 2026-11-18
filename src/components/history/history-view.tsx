@@ -1,17 +1,22 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Activity,
   ArrowDown,
   ArrowUp,
   BarChart3,
+  Check,
   CheckCircle2,
   Clock,
+  Download,
   Layers,
   MapPin,
+  Share2,
   ShieldCheck,
+  Sparkles,
   TrendingUp,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -81,6 +86,78 @@ export function HistoryView({
   const minCategory = summary.minAqi !== null ? getAqiCategory(summary.minAqi) : null;
   const maxCategory = summary.maxAqi !== null ? getAqiCategory(summary.maxAqi) : null;
 
+  const [isCopied, setIsCopied] = React.useState(false);
+
+  const handleShare = React.useCallback(async () => {
+    try {
+      if (typeof window !== 'undefined') {
+        await navigator.clipboard.writeText(window.location.href);
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2000);
+      }
+    } catch {
+      // Ignore clipboard write failures
+    }
+  }, []);
+
+  const handleExportCsv = React.useCallback(() => {
+    const headers = [
+      'Timestamp_ISO',
+      'Time_Label',
+      'Location',
+      'Station_Name',
+      'Station_Code',
+      'AQI',
+      'Category',
+      'Dominant_Pollutant',
+      'PM2_5_ug_m3',
+      'PM10_ug_m3',
+      'NO2_ug_m3',
+      'SO2_ug_m3',
+      'CO_mg_m3',
+      'O3_ug_m3',
+      'NH3_ug_m3',
+    ];
+
+    const escapeCsv = (str: string | number | null | undefined) => {
+      if (str === null || str === undefined) return '';
+      const val = String(str);
+      if (val.includes(',') || val.includes('"') || val.includes('\n')) {
+        return `"${val.replace(/"/g, '""')}"`;
+      }
+      return val;
+    };
+
+    const rows = initialData.dataPoints.map((pt) => [
+      escapeCsv(pt.timestamp),
+      escapeCsv(pt.label),
+      escapeCsv(initialData.location),
+      escapeCsv(initialData.station.name),
+      escapeCsv(initialData.station.stationCode),
+      escapeCsv(pt.aqi),
+      escapeCsv(pt.category),
+      escapeCsv(pt.dominantPollutant),
+      escapeCsv(pt.pm25),
+      escapeCsv(pt.pm10),
+      escapeCsv(pt.no2),
+      escapeCsv(pt.so2),
+      escapeCsv(pt.co),
+      escapeCsv(pt.o3),
+      escapeCsv(pt.nh3),
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `${currentCity.toLowerCase()}_aqi_history_${currentRange}_${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, [initialData, currentCity, currentRange]);
+
   // Prepare comparison series
   const comparisonSeries: ComparisonSeries[] = React.useMemo(() => {
     const all = [initialData, ...comparisonData];
@@ -95,7 +172,7 @@ export function HistoryView({
   return (
     <div className={cn('space-y-6 transition-opacity duration-200', isPending && 'opacity-60 pointer-events-none')}>
       {/* Control Toolbar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-border/60 bg-card/60 backdrop-blur-sm">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-xl border border-border/60 bg-card/60 backdrop-blur-sm">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
             <MapPin className="h-4 w-4 text-primary shrink-0" />
@@ -119,22 +196,77 @@ export function HistoryView({
           </span>
         </div>
 
-        {/* Time Range Selector */}
-        <div className="flex items-center gap-1.5 self-start sm:self-auto overflow-x-auto max-w-full">
-          {RANGE_OPTIONS.map((opt) => {
-            const isActive = opt.value === currentRange;
-            return (
-              <Button
-                key={opt.value}
-                variant={isActive ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => handleRangeChange(opt.value)}
-                className={cn('h-8 text-xs font-medium px-3', isActive ? 'shadow-sm' : 'border-border/60')}
-              >
-                {opt.label}
-              </Button>
-            );
-          })}
+        {/* Right Action Controls: Range Selector + Export + Share + AI Shortcut */}
+        <div className="flex flex-wrap items-center gap-2 self-start md:self-auto">
+          {/* Time Range Selector */}
+          <div className="flex items-center gap-1.5 overflow-x-auto">
+            {RANGE_OPTIONS.map((opt) => {
+              const isActive = opt.value === currentRange;
+              return (
+                <Button
+                  key={opt.value}
+                  variant={isActive ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => handleRangeChange(opt.value)}
+                  className={cn('h-8 text-xs font-medium px-2.5', isActive ? 'shadow-sm' : 'border-border/60')}
+                >
+                  {opt.label}
+                </Button>
+              );
+            })}
+          </div>
+
+          <div className="h-4 w-[1px] bg-border/60 hidden sm:block" />
+
+          {/* Export CSV Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportCsv}
+            className="h-8 text-xs font-medium px-2.5 gap-1.5 border-border/60 hover:bg-muted/80"
+            title="Export historical observations as RFC 4180 CSV"
+          >
+            <Download className="h-3.5 w-3.5 text-muted-foreground" />
+            <span>CSV</span>
+          </Button>
+
+          {/* Share Link Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleShare}
+            className="h-8 text-xs font-medium px-2.5 gap-1.5 border-border/60 hover:bg-muted/80"
+            title="Share direct link to this historical view"
+          >
+            {isCopied ? (
+              <>
+                <Check className="h-3.5 w-3.5 text-emerald-500" />
+                <span className="text-emerald-500">Copied!</span>
+              </>
+            ) : (
+              <>
+                <Share2 className="h-3.5 w-3.5 text-muted-foreground" />
+                <span>Share</span>
+              </>
+            )}
+          </Button>
+
+          {/* Ask AI Shortcut */}
+          <Button
+            asChild
+            variant="secondary"
+            size="sm"
+            className="h-8 text-xs font-medium px-2.5 gap-1.5 shadow-sm bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20"
+          >
+            <Link
+              href={`/assistant?city=${encodeURIComponent(currentCity)}&query=${encodeURIComponent(
+                `Is the air quality in ${currentCity} improving or worsening over the last ${currentRange}?`
+              )}`}
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              <span>Ask AI</span>
+            </Link>
+          </Button>
         </div>
       </div>
 

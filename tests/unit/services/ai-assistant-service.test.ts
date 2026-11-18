@@ -60,4 +60,30 @@ describe('AI Assistant Service & Grounding Engine (Module D)', () => {
     expect(result.groundingContext.aqi).toBeGreaterThan(0);
     expect(result.reply).not.toContain('AQI is 0');
   });
+
+  it('detects comparison city and generates comparative environmental analysis', async () => {
+    const result = await aiAssistantService.answerUserQuery({
+      message: 'How does Delhi compare to Mumbai today?',
+      location: 'Delhi',
+    });
+
+    expect(result.groundingContext.comparisonCitySnapshot).toBeDefined();
+    expect(result.groundingContext.comparisonCitySnapshot?.city).toBe('Mumbai');
+    expect(result.groundingContext.comparisonCitySnapshot?.aqi).toBeGreaterThan(0);
+    expect(result.reply).toContain('Delhi');
+    expect(result.reply).toContain('Mumbai');
+    expect(result.suggestions.length).toBeGreaterThan(0);
+  });
+
+  it('analyzes 24-hour historical air quality trend (improving/worsening)', async () => {
+    const result = await aiAssistantService.answerUserQuery({
+      message: 'Is air quality in Delhi improving or worsening today?',
+      location: 'Delhi',
+    });
+
+    expect(result.reply).toContain('Trend');
+    expect(result.reply.toLowerCase()).toMatch(/improving|deteriorating|worsening|stable/);
+    expect(result.groundingContext.historicalSummary).toBeDefined();
+    expect(result.suggestions.length).toBeGreaterThan(0);
+  });
 });
