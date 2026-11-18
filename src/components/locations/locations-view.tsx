@@ -6,9 +6,12 @@ import {
   AlertCircle,
   ArrowRight,
   Compass,
+  Download,
   ExternalLink,
+  Grid,
   Info,
   Loader2,
+  Map,
   MapPin,
   Navigation,
   Scale,
@@ -23,6 +26,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatAqiValue, getAqiCategory } from '@/lib/formatters';
 import type { LocationComparisonDto, MonitoringStationDto } from '@/features/air-quality/types';
 import { cn } from '@/lib/utils';
+import { StationMap } from './station-map';
 
 export interface StationWithDistance extends MonitoringStationDto {
   distanceKm?: number | null;
@@ -51,6 +55,9 @@ export function LocationsView({
   const [userCoords, setUserCoords] = React.useState<{ lat: number; lon: number } | null>(null);
   const [geoErrorMsg, setGeoErrorMsg] = React.useState<string | null>(null);
 
+  // View mode for directory (grid vs geographic map)
+  const [directoryViewMode, setDirectoryViewMode] = React.useState<'grid' | 'map'>('grid');
+
   // Multi-city comparison state
   const [selectedComparisonCities, setSelectedComparisonCities] = React.useState<string[]>([
     'Delhi',
@@ -59,6 +66,53 @@ export function LocationsView({
   ]);
   const [comparisonData, setComparisonData] = React.useState<LocationComparisonDto>(initialComparison);
   const [isComparing, setIsComparing] = React.useState(false);
+
+  // Export comparison matrix as RFC 4180 CSV
+  const handleExportComparisonCsv = React.useCallback(() => {
+    const headers = [
+      'City',
+      'Monitoring_Station',
+      'Station_Code',
+      'Current_AQI',
+      'Category',
+      'Dominant_Pollutant',
+      'PM2_5_ug_m3',
+      'PM10_ug_m3',
+      'Health_Advisory',
+    ];
+
+    const escapeCsv = (str: string | number | null | undefined) => {
+      if (str === null || str === undefined) return '';
+      const val = String(str);
+      if (val.includes(',') || val.includes('"') || val.includes('\n')) {
+        return `"${val.replace(/"/g, '""')}"`;
+      }
+      return val;
+    };
+
+    const rows = comparisonData.locations.map((loc) => [
+      escapeCsv(loc.city),
+      escapeCsv(loc.stationName),
+      escapeCsv(loc.stationCode),
+      escapeCsv(loc.aqi),
+      escapeCsv(loc.categoryLabel),
+      escapeCsv(loc.dominantPollutant),
+      escapeCsv(loc.pm25),
+      escapeCsv(loc.pm10),
+      escapeCsv(loc.healthAdvisory),
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `cpcb_metro_comparison_${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, [comparisonData]);
 
   // Geolocation trigger with explicit browser permission
   const handleFindNearbyStations = () => {
@@ -318,21 +372,52 @@ export function LocationsView({
             </div>
           </div>
 
-          {/* Station Results Grid */}
+          {/* Station Results Section (Grid vs Map) */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-primary" />
                 <span>Monitoring Stations ({stations.length})</span>
               </h3>
-              {searchQuery && (
-                <span className="text-xs text-muted-foreground">
-                  Filtering for &quot;{searchQuery}&quot;
-                </span>
-              )}
+              <div className="flex items-center gap-2">
+                {searchQuery && (
+                  <span className="text-xs text-muted-foreground mr-2">
+                    Filtering for &quot;{searchQuery}&quot;
+                  </span>
+                )}
+                {/* View Mode Toggle: Grid vs Geo Map */}
+                <div className="inline-flex rounded-lg border border-border/60 p-0.5 bg-muted/40">
+                  <Button
+                    type="button"
+                    variant={directoryViewMode === 'grid' ? 'secondary' : 'ghost'}
+                    size="sm"
+                    onClick={() => setDirectoryViewMode('grid')}
+                    className="h-7 text-xs px-2.5 gap-1.5"
+                  >
+                    <Grid className="h-3 w-3" />
+                    <span>Grid</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={directoryViewMode === 'map' ? 'secondary' : 'ghost'}
+                    size="sm"
+                    onClick={() => setDirectoryViewMode('map')}
+                    className="h-7 text-xs px-2.5 gap-1.5"
+                  >
+                    <Map className="h-3 w-3" />
+                    <span>Geo Map</span>
+                  </Button>
+                </div>
+              </div>
             </div>
 
-            {stations.length === 0 ? (
+            {directoryViewMode === 'map' ? (
+              <StationMap
+                stations={stations}
+                userCoords={userCoords}
+                selectedCity={searchQuery || undefined}
+              />
+            ) : stations.length === 0 ? (
               <Card className="p-8 text-center text-muted-foreground text-xs">
                 No monitoring stations found matching your search. Try searching for a major city name.
               </Card>
@@ -409,12 +494,44 @@ export function LocationsView({
                     Select 2 to 5 Indian cities to benchmark current environmental conditions and health advisories.
                   </CardDescription>
                 </div>
-                {isComparing && (
-                  <Badge variant="outline" className="gap-1.5 text-xs">
-                    <Loader2 className="h-3 w-3 animate-spin text-primary" />
-                    Updating matrix...
-                  </Badge>
-                )}
+                <div className="flex flex-wrap items-center gap-2">
+                  {isComparing && (
+                    <Badge variant="outline" className="gap-1.5 text-xs">
+                      <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                      Updating matrix...
+                    </Badge>
+                  )}
+                  {/* Export CSV Button */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExportComparisonCsv}
+                    className="h-8 text-xs gap-1.5 border-border/60"
+                    title="Download comparison table as RFC 4180 CSV"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    <span>Export CSV</span>
+                  </Button>
+
+                  {/* Ask AI to Compare */}
+                  <Button
+                    asChild
+                    variant="secondary"
+                    size="sm"
+                    className="h-8 text-xs gap-1.5 shadow-sm bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20"
+                  >
+                    <Link
+                      href={`/assistant?city=${encodeURIComponent(
+                        comparisonData.locations[0]?.city || 'Delhi'
+                      )}&query=${encodeURIComponent(
+                        `How does ${selectedComparisonCities.join(' compare with ')} in air quality today?`
+                      )}`}
+                    >
+                      <Sparkles className="h-3.5 w-3.5" />
+                      <span>Ask AI</span>
+                    </Link>
+                  </Button>
+                </div>
               </div>
             </CardHeader>
 
@@ -473,6 +590,49 @@ export function LocationsView({
                   <div className="text-[11px] text-muted-foreground">
                     Station: {comparisonData.mostPollutedStation || 'N/A'}
                   </div>
+                </div>
+              </div>
+
+              {/* Visual Side-by-Side AQI Level Bars */}
+              <div className="p-4 rounded-xl border border-border/60 bg-card/40 space-y-3">
+                <div className="flex items-center justify-between text-xs font-semibold text-foreground">
+                  <span>Relative Exposure Benchmark (0 to 500 CPCB Scale)</span>
+                  <span className="text-[11px] text-muted-foreground font-normal">
+                    Real-time CAAQMS data
+                  </span>
+                </div>
+                <div className="space-y-2.5">
+                  {comparisonData.locations.map((loc) => {
+                    const cat = loc.aqi !== null ? getAqiCategory(loc.aqi) : null;
+                    const pct = Math.min(100, Math.max(4, ((loc.aqi ?? 0) / 500) * 100));
+                    return (
+                      <div key={loc.city} className="space-y-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-semibold text-foreground">{loc.city}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-bold">{formatAqiValue(loc.aqi)}</span>
+                            {cat && (
+                              <span
+                                className="px-1.5 py-0.5 rounded text-[10px] font-semibold text-white"
+                                style={{ backgroundColor: cat.color }}
+                              >
+                                {cat.label}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="h-2 w-full bg-muted/60 rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{
+                              width: `${pct}%`,
+                              backgroundColor: cat?.color || '#3b82f6',
+                            }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 

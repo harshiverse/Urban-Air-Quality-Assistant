@@ -615,7 +615,7 @@ This document provides a phased implementation plan for the Urban Air Quality As
 ## Phase 9: Location Features & Comparisons
 
 **Duration:** 3-4 days  
-**Status:** ⏳ **PLANNED**
+**Status:** ✅ **COMPLETED**
 
 ### Objectives:
 - Build location search and selection
@@ -626,35 +626,36 @@ This document provides a phased implementation plan for the Urban Air Quality As
 ### Tasks:
 
 #### 9.1 Location Search Page
-- [ ] Create `app/(dashboard)/locations/page.tsx`
-- [ ] Implement search interface
-- [ ] Display search results (cities + stations)
-- [ ] Show station details (coordinates, active status)
-- [ ] Navigate to station-specific dashboard
+- [x] Create `app/(dashboard)/locations/page.tsx`
+- [x] Implement search interface
+- [x] Display search results (cities + stations)
+- [x] Show station details (coordinates, active status)
+- [x] Navigate to station-specific dashboard
 
 #### 9.2 Location Comparison
-- [ ] Multi-select location picker
-- [ ] Side-by-side AQI comparison
-- [ ] Pollutant comparison table
-- [ ] Historical trend comparison charts
-- [ ] Export comparison data
+- [x] Multi-select location picker
+- [x] Side-by-side AQI comparison
+- [x] Pollutant comparison table
+- [x] Historical trend comparison charts
+- [x] Export comparison data (RFC 4180 CSV export)
 
-#### 9.3 Nearby Stations (Optional)
-- [ ] Request geolocation permission
-- [ ] Find nearest monitoring stations
-- [ ] Display distance from user
-- [ ] Show map with station markers (basic)
+#### 9.3 Nearby Stations
+- [x] Request geolocation permission
+- [x] Find nearest monitoring stations via geodesic Haversine distance
+- [x] Display distance from user
+- [x] Show interactive map with station markers (`StationMap` component)
 
 #### 9.4 Station Details
-- [ ] Station metadata display
-- [ ] Station-specific AQI history
-- [ ] Data availability status
+- [x] Station metadata display
+- [x] Station-specific AQI history link
+- [x] Data availability status
 
 ### Acceptance Criteria:
 - ✅ Location search works correctly
 - ✅ Comparison view displays multiple locations
 - ✅ Geolocation permission handled properly
 - ✅ Nearby stations identified correctly
+- ✅ Interactive geographic station network map
 
 ### Estimated Effort: 3-4 days
 
@@ -663,7 +664,7 @@ This document provides a phased implementation plan for the Urban Air Quality As
 ## Phase 10: Weather Integration & Context
 
 **Duration:** 2-3 days  
-**Status:** ⏳ **PLANNED**
+**Status:** ✅ **COMPLETED**
 
 ### Objectives:
 - Integrate weather data
@@ -674,20 +675,20 @@ This document provides a phased implementation plan for the Urban Air Quality As
 ### Tasks:
 
 #### 10.1 Weather Service
-- [ ] Implement weather fetching in WeatherService
-- [ ] Cache weather data (30-min TTL)
-- [ ] Normalize weather data
+- [x] Implement weather fetching in WeatherService (`OpenWeatherProvider` + `MockWeatherProvider`)
+- [x] Cache weather data (30-min TTL)
+- [x] Normalize weather data
 
 #### 10.2 Weather Display
-- [ ] Add weather widget to dashboard
-- [ ] Show temperature, humidity, wind
-- [ ] Display weather conditions
-- [ ] Update weather with location change
+- [x] Add weather widget to dashboard (`WeatherContextCard`)
+- [x] Show temperature, humidity, wind
+- [x] Display weather conditions
+- [x] Update weather with location change
 
 #### 10.3 Weather-AQI Correlation
-- [ ] Show weather alongside AQI trends
-- [ ] Provide contextual insights (e.g., low wind may trap pollutants)
-- [ ] Avoid unsupported causal claims
+- [x] Show weather alongside AQI trends
+- [x] Provide contextual insights (thermal inversion risk & dispersion potential)
+- [x] Avoid unsupported causal claims (Master Prompt compliance)
 
 ### Acceptance Criteria:
 - ✅ Weather data displayed on dashboard

@@ -34,4 +34,18 @@ describe('Weather Service & Atmospheric Correlation (Module F)', () => {
     expect(correlation.windEffect).toContain('km/h');
     expect(correlation.humidityEffect).toContain('%');
   });
+
+  it('provides reliable fallback when OpenWeatherMap API key is absent', async () => {
+    const { OpenWeatherProvider } = await import(
+      '@/server/providers/weather/open-weather/open-weather.provider'
+    );
+    const provider = new OpenWeatherProvider(undefined);
+    const observation = await provider.getWeatherByCity('Bengaluru');
+
+    expect(observation).not.toBeNull();
+    expect(observation?.city).toBe('Bengaluru');
+    expect(observation?.temperature).toBeGreaterThan(0);
+    expect(observation?.windSpeed).toBeDefined();
+    expect(observation?.inversionRisk).toBeDefined();
+  });
 });

@@ -1,13 +1,13 @@
 import { globalCache } from '@/server/cache/memory-cache';
 import type { WeatherObservationDto, WeatherCorrelationContext } from '@/features/weather/types';
 import type { IWeatherProvider } from '../providers/weather/weather.interface';
-import { MockWeatherProvider } from '../providers/weather/mock/mock-weather.provider';
+import { getWeatherProvider } from '../providers/weather/weather.factory';
 
 export class WeatherService {
   private readonly provider: IWeatherProvider;
 
   constructor(provider?: IWeatherProvider) {
-    this.provider = provider || new MockWeatherProvider();
+    this.provider = provider || getWeatherProvider();
   }
 
   /**
