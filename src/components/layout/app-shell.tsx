@@ -5,7 +5,6 @@ import { cn } from '@/lib/utils';
 import { Sidebar } from './sidebar';
 import { MobileNav } from './mobile-nav';
 import { Header } from './header';
-import { Footer } from './footer';
 
 interface AppShellProps {
   readonly children: React.ReactNode;
@@ -84,11 +83,6 @@ export function AppShell({ children }: AppShellProps) {
         >
           <div className="page-enter">{children}</div>
         </main>
-
-        {/* Footer — hidden on mobile to avoid overlap with bottom nav */}
-        <div className="hidden md:block">
-          <Footer />
-        </div>
       </div>
 
       {/* Mobile bottom nav */}
