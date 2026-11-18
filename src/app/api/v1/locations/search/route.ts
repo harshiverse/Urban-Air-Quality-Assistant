@@ -9,6 +9,9 @@ export async function GET(request: NextRequest) {
     const query = {
       q: searchParams.get('q') || undefined,
       limit: searchParams.get('limit') || undefined,
+      lat: searchParams.get('lat') || undefined,
+      lon: searchParams.get('lon') || undefined,
+      maxDistanceKm: searchParams.get('maxDistanceKm') || undefined,
     };
 
     const validated = LocationSearchQuerySchema.safeParse(query);
@@ -26,7 +29,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const stations = await airQualityService.searchLocations(validated.data.q);
+    const stations = await airQualityService.searchLocations({
+      query: validated.data.q,
+      lat: validated.data.lat,
+      lon: validated.data.lon,
+      maxDistanceKm: validated.data.maxDistanceKm,
+    });
     const limited = stations.slice(0, validated.data.limit);
 
     return NextResponse.json({

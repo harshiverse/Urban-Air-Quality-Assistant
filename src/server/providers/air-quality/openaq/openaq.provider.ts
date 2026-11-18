@@ -1,5 +1,7 @@
 import type {
   AirQualityObservation,
+  HistoricalAirQualityDto,
+  HistoryTimeRange,
   MonitoringStationDto,
   PollutantType,
 } from '@/features/air-quality/types';
@@ -128,5 +130,13 @@ export class OpenAQProvider implements IAirQualityProvider {
     } catch {
       return null;
     }
+  }
+
+  public async getHistoricalData(_params: {
+    stationCode?: string;
+    city?: string;
+    range: HistoryTimeRange;
+  }): Promise<HistoricalAirQualityDto | null> {
+    return null;
   }
 }

@@ -51,5 +51,17 @@ describe('API Route Handlers', () => {
       expect(json.data.results.length).toBeGreaterThan(0);
       expect(json.data.results[0].city).toBe('Delhi');
     });
+
+    it('returns stations sorted by proximity when coordinates are provided', async () => {
+      const req = new NextRequest('http://localhost:3000/api/v1/locations/search?lat=28.6139&lon=77.2090&maxDistanceKm=100');
+      const res = await searchLocations(req);
+
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.success).toBe(true);
+      expect(json.data.results.length).toBeGreaterThan(0);
+      expect(json.data.results[0].distanceKm).toBeDefined();
+      expect(json.data.results[0].distanceFormatted).toBeDefined();
+    });
   });
 });

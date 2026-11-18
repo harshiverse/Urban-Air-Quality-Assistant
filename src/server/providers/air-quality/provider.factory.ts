@@ -1,4 +1,5 @@
 import type { IAirQualityProvider } from './provider.interface';
+import type { HistoryTimeRange } from '@/features/air-quality/types';
 import { MockAirQualityProvider } from './mock/mock.provider';
 import { DataGovInProvider } from './data-gov-in/data-gov-in.provider';
 import { OpenAQProvider } from './openaq/openaq.provider';
@@ -36,6 +37,16 @@ class CompositeFallbackProvider implements IAirQualityProvider {
     const result = await this.primary.getObservationsByCity(city);
     if (result && result.observations.length > 0) return result;
     return this.fallback.getObservationsByCity(city);
+  }
+
+  public async getHistoricalData(params: {
+    stationCode?: string;
+    city?: string;
+    range: HistoryTimeRange;
+  }) {
+    const data = await this.primary.getHistoricalData(params);
+    if (data && data.dataPoints.length > 0) return data;
+    return this.fallback.getHistoricalData(params);
   }
 }
 

@@ -1,5 +1,7 @@
 import type {
   AirQualityObservation,
+  HistoricalAirQualityDto,
+  HistoryTimeRange,
   MonitoringStationDto,
   PollutantType,
 } from '@/features/air-quality/types';
@@ -209,5 +211,15 @@ export class DataGovInProvider implements IAirQualityProvider {
     }
 
     return observations;
+  }
+
+  public async getHistoricalData(_params: {
+    stationCode?: string;
+    city?: string;
+    range: HistoryTimeRange;
+  }): Promise<HistoricalAirQualityDto | null> {
+    // The data.gov.in real-time endpoint only publishes instantaneous 15-minute observations.
+    // Return null to signal the service layer to fall back to persisted database observations or reference dataset.
+    return null;
   }
 }

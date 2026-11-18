@@ -1,5 +1,7 @@
 import type {
   AirQualityObservation,
+  HistoricalAirQualityDto,
+  HistoryTimeRange,
   MonitoringStationDto,
 } from '@/features/air-quality/types';
 
@@ -40,4 +42,13 @@ export interface IAirQualityProvider {
    * List all available monitoring stations from this provider
    */
   getStations(city?: string): Promise<MonitoringStationDto[]>;
+
+  /**
+   * Fetch historical air quality data points for a station or city
+   */
+  getHistoricalData(params: {
+    stationCode?: string;
+    city?: string;
+    range: HistoryTimeRange;
+  }): Promise<HistoricalAirQualityDto | null>;
 }
